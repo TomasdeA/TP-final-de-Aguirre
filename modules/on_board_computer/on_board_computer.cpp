@@ -12,6 +12,8 @@
 //=====[Declaration and initialization of public global objects]===============
 
 //=====[Declaration of external public global variables]=======================
+// Estado del PDC
+extern bool pdcActiveState;
 
 //=====[Declaration and initialization of public global variables]=============
 

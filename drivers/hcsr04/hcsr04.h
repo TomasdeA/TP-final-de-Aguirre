@@ -8,7 +8,7 @@
 class HCSR04 {
 public:
     HCSR04(DigitalOut triggerPin, DigitalIn echoPin);
-    float distance();
+    float distancia();
 
 private:
     DigitalOut trigger;

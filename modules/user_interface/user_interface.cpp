@@ -10,6 +10,7 @@
 #include "matrix_keypad.h"
 #include "code.h"
 #include "pc_serial.h"
+#include "pdc.h"
 
 //=====[Declaration of private defines]========================================
 
@@ -24,6 +25,12 @@ InterruptIn gateCloseButton(PF_8);
 
 DigitalOut incorrectCodeLed(LED3);
 DigitalOut systemBlockedLed(LED2);
+
+DigitalOut led1(LED1);
+DigitalOut led2(LED2);
+
+// Definir el pin para el potenciómetro
+AnalogIn potentiometer(A0);
 
 //=====[Declaration of external public global variables]=======================
 
@@ -116,12 +123,25 @@ static void userInterfaceMatrixKeypadUpdate()
         switch (keyReleased) {
             case TECLA_UNO:
                 pcSerialComStringWrite("Se presionó la tecla 1\n");
+                // Cambiar el estado del PDC
+                pdcActiveState = !pdcActiveState;
+                
+                // Opcional: Imprimir mensaje en la consola para indicar el cambio de estado
+                if (pdcActiveState) {
+                    pcSerialComStringWrite("PDC Activado\n");
+                } else {
+                    pcSerialComStringWrite("PDC Desactivado\n");
+                }
+            
                 break;
             case TECLA_DOS:
                 pcSerialComStringWrite("Se presionó la tecla 2\n");
+                setDimmingMode(2, !getDimmingMode(2));
+    
                 break;
             case TECLA_TRES:
                 pcSerialComStringWrite("Se presionó la tecla 3\n");
+                setDimmingMode(3, !getDimmingMode(3));
                 break;
             case TECLA_CUATRO:
                 pcSerialComStringWrite("Se presionó la tecla 4\n");

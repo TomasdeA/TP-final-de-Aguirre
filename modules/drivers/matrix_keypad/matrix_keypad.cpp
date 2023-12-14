@@ -5,7 +5,6 @@
 
 #include "matrix_keypad.h"
 
-#include "date_and_time.h"
 
 //=====[Declaration of private defines]========================================
 

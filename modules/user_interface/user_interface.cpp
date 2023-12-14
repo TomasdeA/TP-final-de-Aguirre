@@ -6,7 +6,6 @@
 #include "user_interface.h"
 
 #include "on_board_computer.h"
-#include "date_and_time.h"
 #include "matrix_keypad.h"
 #include "pc_serial.h"
 #include "pdc.h"

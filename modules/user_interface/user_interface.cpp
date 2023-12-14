@@ -8,95 +8,11 @@
 #include "on_board_computer.h"
 #include "date_and_time.h"
 #include "matrix_keypad.h"
-#include "code.h"
 #include "pc_serial.h"
 #include "pdc.h"
+#include "dimming.h"
 
 //=====[Declaration of private defines]========================================
-
-
-//=====[Declaration of private data types]=====================================
-
-
-//=====[Declaration and initialization of public global objects]===============
-
-InterruptIn gateOpenButton(PF_9);
-InterruptIn gateCloseButton(PF_8);
-
-DigitalOut incorrectCodeLed(LED3);
-DigitalOut systemBlockedLed(LED2);
-
-DigitalOut led1(LED1);
-DigitalOut led2(LED2);
-
-// Definir el pin para el potenciómetro
-AnalogIn potentiometer(A0);
-
-//=====[Declaration of external public global variables]=======================
-
-//=====[Declaration and initialization of public global variables]=============
-
-char codeSequenceFromUserInterface[CODE_NUMBER_OF_KEYS];
-
-//=====[Declaration and initialization of private global variables]============
-
-
-static bool incorrectCodeState = OFF;
-static bool systemBlockedState = OFF;
-
-static bool codeComplete = false;
-static int numberOfCodeChars = 0;
-
-//=====[Declarations (prototypes) of private functions]========================
-
-static void userInterfaceMatrixKeypadUpdate();
-static void incorrectCodeIndicatorUpdate();
-static void systemBlockedIndicatorUpdate();
-
-
-//=====[Implementations of public functions]===================================
-
-void userInterfaceInit()
-{
-    matrixKeypadInit( SYSTEM_TIME_INCREMENT_MS );
-}
-
-void userInterfaceUpdate()
-{
-    userInterfaceMatrixKeypadUpdate();
-}
-
-bool incorrectCodeStateRead()
-{
-    return incorrectCodeState;
-}
-
-void incorrectCodeStateWrite( bool state )
-{
-    incorrectCodeState = state;
-}
-
-bool systemBlockedStateRead()
-{
-    return systemBlockedState;
-}
-
-void systemBlockedStateWrite( bool state )
-{
-    systemBlockedState = state;
-}
-
-bool userInterfaceCodeCompleteRead()
-{
-    return codeComplete;
-}
-
-void userInterfaceCodeCompleteWrite( bool state )
-{
-    codeComplete = state;
-}
-
-//=====[Implementations of private functions]==================================
 #define TECLA_UNO '1'
 #define TECLA_DOS '2'
 #define TECLA_TRES '3'
@@ -113,6 +29,89 @@ void userInterfaceCodeCompleteWrite( bool state )
 #define TECLA_D 'D'
 #define TECLA_ASTERISCO '*'
 #define TECLA_NUMERAL '#'
+
+#define DOUBLE_TAP_TIME 400ms
+//=====[Declaration of private data types]=====================================
+
+
+//=====[Declaration and initialization of public global objects]===============
+
+
+static bool isFirstTapDetected = false;  // Agregar esta variable global
+
+
+//=====[Declaration of external public global variables]=======================
+
+//=====[Declaration and initialization of public global variables]=============
+
+
+//=====[Declaration and initialization of private global variables]============
+
+Ticker tickerluzInterior;
+Ticker tickerluzGuardabarro;
+
+static int tickRateMSDimming = 1;
+
+//=====[Declarations (prototypes) of private functions]========================
+
+static void userInterfaceMatrixKeypadUpdate();
+
+
+//=====[Implementations of public functions]===================================
+
+void userInterfaceInit()
+{
+    matrixKeypadInit( SYSTEM_TIME_INCREMENT_MS );
+}
+
+void userInterfaceUpdate()
+{
+    userInterfaceMatrixKeypadUpdate();
+}
+
+//=====[Implementations of private functions]==================================
+
+void setDimmingLightOneTap(lucesPwm_t luzIndex){
+    //OFF
+    if(!getOnMode(luzIndex))
+        setOnMode(luzIndex, true);
+    //ON - DIMMING
+    else if(getDimmingMode(luzIndex))
+        setDimmingMode(luzIndex, false);
+    //ON
+    else 
+        setOnMode(luzIndex, false);
+}
+
+void setDimmingLightDobleTap(lucesPwm_t luzIndex){
+    //OFF
+    if(!getOnMode(luzIndex)){
+        setOnMode(luzIndex, true);
+        setDimmingMode(luzIndex, true);
+    }
+    //ON - DIMMING
+    else if(getDimmingMode(luzIndex))
+        setDimmingMode(luzIndex, false);
+    //ON 
+    else 
+        setDimmingMode(luzIndex, true);
+}
+// Callback para el Ticker
+void luzInteriorCallback() {
+    // Si el ticker se activa, asumimos que fue un simple tap
+    isFirstTapDetected = false;
+    // Single Tap
+    setDimmingLightOneTap(LUZ_INTERIOR);
+    tickerluzInterior.detach();
+}
+
+void luzGuardabarroCallback() {
+    // Si el ticker se activa, asumimos que fue un simple tap
+    isFirstTapDetected = false;
+    // Single Tap
+    setDimmingLightOneTap(LUZ_GUARDABARRO);
+    tickerluzInterior.detach();
+}
 
 static void userInterfaceMatrixKeypadUpdate()
 {
@@ -136,12 +135,25 @@ static void userInterfaceMatrixKeypadUpdate()
                 break;
             case TECLA_DOS:
                 pcSerialComStringWrite("Se presionó la tecla 2\n");
-                setDimmingMode(2, !getDimmingMode(2));
-    
+                if(!isFirstTapDetected){
+                    isFirstTapDetected = true;
+                    tickerluzInterior.attach(&luzInteriorCallback, DOUBLE_TAP_TIME);
+                }else {
+                    tickerluzInterior.detach();
+                    isFirstTapDetected = false;
+                    setDimmingLightDobleTap(LUZ_INTERIOR);
+                }
                 break;
             case TECLA_TRES:
                 pcSerialComStringWrite("Se presionó la tecla 3\n");
-                setDimmingMode(3, !getDimmingMode(3));
+                if(!isFirstTapDetected){
+                    isFirstTapDetected = true;
+                    tickerluzInterior.attach(&luzGuardabarroCallback, DOUBLE_TAP_TIME);
+                }else {
+                    tickerluzInterior.detach();
+                    isFirstTapDetected = false;
+                    setDimmingLightDobleTap(LUZ_GUARDABARRO);
+                }
                 break;
             case TECLA_CUATRO:
                 pcSerialComStringWrite("Se presionó la tecla 4\n");
